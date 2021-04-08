@@ -23,15 +23,20 @@ function Person(name, birth, img, wiki) {
     this.wiki = wiki;
 }
 
-let html = new Product("HTML", "---", "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/HTML5_logo_and_wordmark.svg/230px-HTML5_logo_and_wordmark.svg.png", "https://es.wikipedia.org/wiki/HTML");
-let css = new Product("CSS", "---", "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/CSS3_logo_and_wordmark.svg/165px-CSS3_logo_and_wordmark.svg.png", "https://es.wikipedia.org/wiki/Hoja_de_estilos_en_cascada");
-let alanTuring = new Person("Alan Turing", "23/06/1912", "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Alan_Turing_Aged_16.jpg/330px-Alan_Turing_Aged_16.jpg", "https://es.wikipedia.org/wiki/Alan_Turing")
-let ibm = new Entity("IBM", "16/06/1911", "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/IBM_logo.svg/368px-IBM_logo.svg.png", "https://es.wikipedia.org/wiki/IBM")
+let html = new Product("HTML", "1993", "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/HTML5_logo_and_wordmark.svg/230px-HTML5_logo_and_wordmark.svg.png", "https://es.wikipedia.org/wiki/HTML");
+let css = new Product("CSS", "17/12/1996", "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/CSS3_logo_and_wordmark.svg/165px-CSS3_logo_and_wordmark.svg.png", "https://es.wikipedia.org/wiki/Hoja_de_estilos_en_cascada");
+let ibm = new Entity("IBM", "16/06/1911", "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/IBM_logo.svg/368px-IBM_logo.svg.png", "https://es.wikipedia.org/wiki/IBM");
+let w3c = new Entity("World Wide Web Consortium", "1/10/1994", "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/W3C%C2%AE_Icon.svg/368px-W3C%C2%AE_Icon.svg.png", "https://es.wikipedia.org/wiki/World_Wide_Web_Consortium")
+let alanTuring = new Person("Alan Turing", "23/06/1912", "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Alan_Turing_Aged_16.jpg/330px-Alan_Turing_Aged_16.jpg", "https://es.wikipedia.org/wiki/Alan_Turing");
+let timBerners = new Person("Timothy John Berners-Lee", "8/6/1955", "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Sir_Tim_Berners-Lee_%28cropped%29.jpg/330px-Sir_Tim_Berners-Lee_%28cropped%29.jpg", "https://es.wikipedia.org/wiki/Tim_Berners-Lee");
 
 let products = [html, css];
-let entities = [ibm];
-let persons = [alanTuring];
+let entities = [ibm, w3c];
+let persons = [alanTuring, timBerners];
 let index = [products, entities, persons];
+
+html.entities = [1];
+w3c.persons = [1];
 
 let loginForm = '<div id="loginForm" class="col-sm-6 align-self-center">' +
     '<form class="row justify-content-end">' +
@@ -67,6 +72,9 @@ let writerButtons = '<div id="writerButtons" class="col-sm-auto align-self-cente
 let entitiesAuxList = [];
 let personsAuxList = [];
 
+let browsingHistory = [];
+let actualPage;
+
 function onLoad() {
     let body = document.body;
     let main = document.createElement("main");
@@ -74,9 +82,12 @@ function onLoad() {
 
     if (localStorage.getItem("users") === null)
         loadUsers();
-    main.appendChild(readIndex());
+    if (localStorage.getItem("index") === null)
+        loadIndex();
+    main.appendChild(buildIndexGrid());
     header.innerHTML += loginForm;
     body.appendChild(main);
+    browsingHistory = [];
 }
 
 function loadUsers() {
@@ -93,40 +104,30 @@ function loadUsers() {
     localStorage.setItem("users", users);
 }
 
-function readIndex() {
-    if (localStorage.getItem("index") === null)
-        loadIndex();
-    let containerLists = document.createElement("div");
-
-    containerLists.className = "row align-items-start p-3 m-0";
-    containerLists.id = "indexList";
-
-    createElementsGridPage(containerLists);
-
-    return containerLists;
-}
-
-
 function loadIndex() {
     let _index = JSON.stringify(index);
     localStorage.setItem("index", _index);
 }
 
-function createElementsGridPage(container) {
+function buildIndexGrid() {
     let index = JSON.parse(localStorage.getItem("index"));
+    let container = document.createElement("div");
     let productsColumn = buildColumnCards(index[0]);
     let entitiesColumn = buildColumnCards(index[1]);
     let personsColumn = buildColumnCards(index[2]);
 
-
-    productsColumn.className = "col-sm-4";
+    container.className = "row align-items-start p-3 m-0";
+    container.id = "indexList";
+    productsColumn.className = "col-sm-4 p-0";
     productsColumn.id = "productsColumn";
-    entitiesColumn.className = "col-sm-4";
+    entitiesColumn.className = "col-sm-4 p-0";
     entitiesColumn.id = "entitiesColumn";
-    personsColumn.className = "col-sm-4";
+    personsColumn.className = "col-sm-4 p-0";
     personsColumn.id = "personsColumn";
 
     container.append(productsColumn, entitiesColumn, personsColumn);
+
+    return container;
 }
 
 function buildColumnCards(list) {
@@ -151,7 +152,6 @@ function createCard(element, elementPosition) {
     let paragraph = document.createElement("p");
     let elementLogo = document.createElement("img");
     let elementName = document.createTextNode(element.name);
-
     card.className = "card m-2 cardItem";
     card.id = elementPosition;
     cardBody.className = "card-body"
@@ -172,52 +172,106 @@ function createCard(element, elementPosition) {
     return card;
 }
 
-function goToProductPage(elementPosition) {
-    let main = document.getElementsByTagName("main")[0];
+function goToProductPage(productPosition) {
     let index = JSON.parse(localStorage.getItem("index"));
+    let product = index[0][productPosition];
+    let main = document.getElementsByTagName("main")[0];
+    let page = buildElementPage(product);
+    let oldBirthField = page.children[1].children[0].children[1];
+    let birthField = createTextLabel("Fecha de lanzamiento: ", product.birth);
 
+    oldBirthField.replaceWith(birthField);
     main.innerHTML = "";
-    main.appendChild(buildElementPage(index[0][elementPosition]));
+    main.appendChild(page);
+
+    browsingHistory.push(actualPage);
+    actualPage = [0, productPosition];
 }
 
-function goToEntityPage(elementPosition) {
-    let main = document.getElementsByTagName("main")[0];
+function goToEntityPage(entityPosition) {
     let index = JSON.parse(localStorage.getItem("index"));
+    let entity = index[1][entityPosition];
+    let main = document.getElementsByTagName("main")[0];
+    let page = buildElementPage(entity);
+    let oldBirthField = page.children[1].children[0].children[1];
+    let birthField = createTextLabel("Fecha de fundación: ", entity.birth);
 
+    oldBirthField.replaceWith(birthField);
     main.innerHTML = "";
-    main.appendChild(buildElementPage(index[1][elementPosition]));
+    main.appendChild(page);
+
+    browsingHistory.push(actualPage);
+    actualPage = [1, entityPosition]
 }
 
-function goToPersonPage(elementPosition) {
-    let main = document.getElementsByTagName("main")[0];
+function goToPersonPage(personPosition) {
     let index = JSON.parse(localStorage.getItem("index"));
+    let person = index[2][personPosition];
+    let main = document.getElementsByTagName("main")[0];
+    let page = buildElementPage(person);
+    let oldBirthField = page.children[1].children[0].children[1];
+    let birthField = createTextLabel("Fecha de nacimiento: ", person.birth);
 
+    oldBirthField.replaceWith(birthField);
     main.innerHTML = "";
-    main.appendChild(buildElementPage(index[2][elementPosition]));
+    main.appendChild(page);
+
+    browsingHistory.push(actualPage);
+    actualPage = [2, personPosition];
 }
 
 function buildElementPage(element) {
+    let container = document.createElement("div");
     let header = document.getElementsByTagName("header")[0];
+    let returnButtonRow = document.createElement("div");
+    let returnButton = document.createElement("input");
     let row = document.createElement("div");
     let dataColumn = document.createElement("div");
     let wikiColumn = document.createElement("div");
     let nameField = createTextLabel("Nombre: ", element.name);
-    let birthField = createTextLabel("Fecha de nacimiento: ", element.birth);
+    let birthField = document.createElement("div");
     let references = getListOfReferences(element);
     let wikiFrame = document.createElement("iframe");
 
+    container.className = "col-auto";
+    returnButton.type = "button";
+    returnButton.className = "btn btn-primary m-1 col-2";
+    returnButton.value = "Volver";
+    returnButton.onclick = goBack;
+    returnButtonRow.className = "row p-3 m-0";
     row.className = "row p-3 m-0";
-    dataColumn.className = "col-sm-4 align-self-center";
+    dataColumn.className = "col-sm-4 align-self-start";
+    dataColumn.id = "dataColumn";
     wikiColumn.className = "col-sm-8";
     wikiFrame.src = element.wiki;
     wikiFrame.height = (window.innerHeight - header.clientHeight) * 0.9;
-    wikiFrame.width = Math.trunc(window.innerWidth / 12) * 7;
+    wikiFrame.width = Math.trunc(window.innerWidth / 12) * 7.5;
 
-    dataColumn.append(nameField, birthField);
+    dataColumn.append(nameField, birthField, references);
     wikiColumn.appendChild(wikiFrame);
-    row.append(dataColumn, wikiColumn, references);
+    row.append(dataColumn, wikiColumn);
+    returnButtonRow.appendChild(returnButton);
+    container.append(returnButtonRow, row);
 
-    return row;
+    return container;
+}
+
+function goBack() {
+    let index = JSON.parse(localStorage.getItem("index"));
+    let main = document.getElementsByTagName("main")[0];
+
+    main.innerHTML = "";
+    if (browsingHistory.length <= 1) {
+        browsingHistory = [];
+        actualPage = [];
+        main.appendChild(buildIndexGrid());
+    }
+    else {
+        let pageData = browsingHistory.pop()
+        let element = index[pageData[0]][pageData[1]];
+        actualPage = [pageData[0], pageData[1]];
+        main.appendChild(buildElementPage(element));
+    }
 }
 
 function createTextLabel(labelText, textInfo) {
@@ -241,7 +295,6 @@ function createTextLabel(labelText, textInfo) {
 function getListOfReferences(element) {
     let container = document.createElement("div");
     if (!(element.type === "Person")) {
-        console.log("__________");
         let personsList = buildListOfPersons(element.persons);
         container.appendChild(personsList);
     }
@@ -259,8 +312,6 @@ function buildListOfEntities(list) {
     let index = JSON.parse(localStorage.getItem("index"));
     let container = buildListOfElements(list, "Entidades involucradas: ");
     let entitiesListButtons = Array.from(container.children[1].children);
-    console.log(entitiesListButtons);
-
     entitiesListButtons.map(function (button) {
         let elementPosition = button.id.substr(11);
 
@@ -278,12 +329,11 @@ function buildListOfPersons(list) {
     let personsListButtons = Array.from(container.children[1].children);
 
     personsListButtons.map(function (button) {
-        let elementPosition = button.id.substr(11);
-
-        button.value = index[2][elementPosition].name;
-        button.setAttribute("onclick", "goToPersonPage(" + elementPosition + ")");
+        let personPosition = button.id.substr(11);
+        let person = index[2][personPosition];
+        button.value = person.name;
+        button.setAttribute("onclick", "goToPersonPage(" + personPosition + ")");
     });
-
 
     return container;
 }
@@ -298,7 +348,7 @@ function buildListOfElements(list, text) {
         let element = list[i];
         let inputButton = document.createElement("input");
         inputButton.type = "button";
-        inputButton.className = "btn btn-outline-secondary m-1";
+        inputButton.className = "btn btn-outline-dark m-1";
         inputButton.id = "goToButton-" + element;
         elementsList.appendChild(inputButton);
     }
@@ -308,7 +358,6 @@ function buildListOfElements(list, text) {
     container.append(elementsLabel, elementsList);
 
     return container;
-
 }
 function checkLogin() {
     let user = document.getElementById("userInput").value;
@@ -553,6 +602,7 @@ function showEditPersonForm(elementPosition) {
     confirmButton.setAttribute("onclick", 'editPersonOfIndex(' + elementPosition + ')');
 
     modifyModalFormToEditElement(index[2], elementPosition);
+
 }
 
 function modifyModalFormToAddPerson() {
@@ -650,7 +700,7 @@ function updateIndex(index) {
     let indexList = document.getElementById("indexList");
 
     localStorage.setItem("index", JSON.stringify(index));
-    main.replaceChild(readIndex(), indexList);
+    main.replaceChild(buildIndexGrid(), indexList);
 
     addEditButtons();
     personsAuxList = [];
@@ -670,7 +720,7 @@ function editEntityOfIndex(elementPosition) {
     let index = JSON.parse(localStorage.getItem("index"));
     let item = createNewEntity();
 
-    index[0][elementPosition] = item;
+    index[1][elementPosition] = item;
 
     updateIndex(index);
 }
@@ -678,7 +728,7 @@ function editPersonOfIndex(elementPosition) {
     let index = JSON.parse(localStorage.getItem("index"));
     let item = createNewPerson();
 
-    index[0][elementPosition] = item;
+    index[2][elementPosition] = item;
 
     updateIndex(index);
 }
@@ -732,7 +782,6 @@ function getDataOfElement() {
     return [name, birth, logoUrl, wikiUrl];
 }
 
-//implementar eliminar las referencias 
 function removeProductOfIndex(elementPosition) {
     let index = JSON.parse(localStorage.getItem("index"));
 
@@ -746,14 +795,39 @@ function removeEntityOfIndex(elementPosition) {
 
     index[1].splice(elementPosition, 1);
 
+    removeEntityReferences(index, elementPosition);
     updateIndex(index);
 }
+
+function removeEntityReferences(index, elementPosition) {
+    let products = index[0];
+
+    products.map((product) => removeReferences(product.entities, elementPosition));
+}
+
 function removePersonOfIndex(elementPosition) {
     let index = JSON.parse(localStorage.getItem("index"));
 
     index[2].splice(elementPosition, 1);
 
+    removePersonReferences(index, elementPosition);
     updateIndex(index);
+}
+
+function removePersonReferences(index, elementPosition) {
+    let products = index[0];
+    let entities = index[1];
+
+    products.map((product) => removeReferences(product.persons, elementPosition));
+    entities.map((entity) => removeReferences(entity.persons, elementPosition));
+}
+
+function removeReferences(list, element) {
+    console.log(element);
+    let pos = list.indexOf(element.toString());
+    if (pos !== -1) {
+        list.splice(pos, 1);
+    }
 }
 
 function logout() {
@@ -783,29 +857,38 @@ function buildModalWindow() {
     let modalContent = document.createElement("div");
     let modalHeader = buildModalHeader();
     let modalBody = buildModalBody();
+    let modalFooter = buildModalFooter();
 
-    let modalFooter = document.createElement("div");
-    let cancelButton = document.createElement("button");
-    let confirmButton = document.createElement("input");
+    container.className = "modal fade"
+    container.id = "myModal"
+    container.tabindex = "-1"
+    container.setAttribute("aria-labelledby", "modalLabel");
+    container.setAttribute("aria-hidden", "true");
+    modalDialog.id = "modal-dialog";
+    modalContent.id = "modal-content";
 
+    modalContent.append(modalHeader, modalBody, modalFooter);
+    modalDialog.appendChild(modalContent);
+    container.appendChild(modalDialog);
 
+    return container;
 }
 
 function buildModalHeader() {
     let modalHeader = document.createElement("div");
     let modalHeaderTitle = document.createElement("h5");
-    let closeButton = document.createElement("button");
+    let modalCloseButton = document.createElement("button");
 
     modalHeader.id = "modalHeader";
     modalHeader.className = "modal-header";
     modalHeaderTitle.id = "modalHeaderTitle";
     modalHeaderTitle.className = "modal-title";
-    closeButton.type = "button";
-    closeButton.className = "btn-close";
-    closeButton.setAttribute("data-bs-dismiss", "modal");
-    closeButton.setAttribute("aria-label", "Close");
+    modalCloseButton.type = "button";
+    modalCloseButton.className = "btn-close";
+    modalCloseButton.setAttribute("data-bs-dismiss", "modal");
+    modalCloseButton.setAttribute("aria-label", "Close");
 
-    modalHeader.append(modalHeaderTitle, closeButton);
+    modalHeader.append(modalHeaderTitle, modalCloseButton);
 
     return modalHeader;
 }
@@ -820,4 +903,24 @@ function buildModalBody() {
     modalBody.appendChild(modalForm);
 
     return modalBody;
+}
+
+function buildModalFooter() {
+    let modalFooter = document.createElement("div");
+    let modalCloseButton = document.createElement("button");
+    let modalConfirmButton = document.createElement("input");
+
+    modalFooter.className = "modal-footer";
+    modalCloseButton.type = "button";
+    modalCloseButton.className = "btn btn-secondary";
+    modalCloseButton.setAttribute("data-bs-dismiss", "modal");
+    modalConfirmButton.id = "modalConfirmButton";
+    modalConfirmButton.type = "button";
+    modalConfirmButton.setAttribute("data-bs-dismiss", "modal");
+    modalConfirmButton.className = "btn btn-primary";
+    modalConfirmButton.value = "Añadir";
+
+    modalFooter.append(modalCloseButton, modalConfirmButton);
+
+    return modalFooter;
 }
