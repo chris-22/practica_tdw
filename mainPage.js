@@ -38,6 +38,8 @@ let index = [products, entities, persons];
 html.entities = [1];
 w3c.persons = [1];
 
+let loged = false;
+
 let loginForm = '<div id="loginForm" class="col-sm-6 align-self-center">' +
     '<form class="row justify-content-end">' +
     '<div class="col-sm-4">' +
@@ -71,9 +73,6 @@ let writerButtons = '<div id="writerButtons" class="col-sm-auto align-self-cente
 
 let entitiesAuxList = [];
 let personsAuxList = [];
-
-let browsingHistory = [];
-let actualPage;
 
 function onLoad() {
     let body = document.body;
@@ -117,7 +116,7 @@ function buildIndexGrid() {
     let personsColumn = buildColumnCards(index[2]);
 
     container.className = "row align-items-start p-3 m-0";
-    container.id = "indexList";
+    container.id = "indexGrid";
     productsColumn.className = "col-sm-4 p-0";
     productsColumn.id = "productsColumn";
     entitiesColumn.className = "col-sm-4 p-0";
@@ -135,15 +134,14 @@ function buildColumnCards(list) {
 
     for (let i = 0; i < list.length; i++) {
         let element = list[i];
-        let card = createCard(element, i);
+        let card = buildCard(element, i);
         column.appendChild(card);
     }
 
     return column;
-
 }
 
-function createCard(element, elementPosition) {
+function buildCard(element, elementPosition) {
     let card = document.createElement("div");
     let cardBody = document.createElement("div");
     let cardBodyRow = document.createElement("div");
@@ -152,6 +150,7 @@ function createCard(element, elementPosition) {
     let paragraph = document.createElement("p");
     let elementLogo = document.createElement("img");
     let elementName = document.createTextNode(element.name);
+
     card.className = "card m-2 cardItem";
     card.id = elementPosition;
     cardBody.className = "card-body"
@@ -172,193 +171,6 @@ function createCard(element, elementPosition) {
     return card;
 }
 
-function goToProductPage(productPosition) {
-    let index = JSON.parse(localStorage.getItem("index"));
-    let product = index[0][productPosition];
-    let main = document.getElementsByTagName("main")[0];
-    let page = buildElementPage(product);
-    let oldBirthField = page.children[1].children[0].children[1];
-    let birthField = createTextLabel("Fecha de lanzamiento: ", product.birth);
-
-    oldBirthField.replaceWith(birthField);
-    main.innerHTML = "";
-    main.appendChild(page);
-
-    browsingHistory.push(actualPage);
-    actualPage = [0, productPosition];
-}
-
-function goToEntityPage(entityPosition) {
-    let index = JSON.parse(localStorage.getItem("index"));
-    let entity = index[1][entityPosition];
-    let main = document.getElementsByTagName("main")[0];
-    let page = buildElementPage(entity);
-    let oldBirthField = page.children[1].children[0].children[1];
-    let birthField = createTextLabel("Fecha de fundación: ", entity.birth);
-
-    oldBirthField.replaceWith(birthField);
-    main.innerHTML = "";
-    main.appendChild(page);
-
-    browsingHistory.push(actualPage);
-    actualPage = [1, entityPosition]
-}
-
-function goToPersonPage(personPosition) {
-    let index = JSON.parse(localStorage.getItem("index"));
-    let person = index[2][personPosition];
-    let main = document.getElementsByTagName("main")[0];
-    let page = buildElementPage(person);
-    let oldBirthField = page.children[1].children[0].children[1];
-    let birthField = createTextLabel("Fecha de nacimiento: ", person.birth);
-
-    oldBirthField.replaceWith(birthField);
-    main.innerHTML = "";
-    main.appendChild(page);
-
-    browsingHistory.push(actualPage);
-    actualPage = [2, personPosition];
-}
-
-function buildElementPage(element) {
-    let container = document.createElement("div");
-    let header = document.getElementsByTagName("header")[0];
-    let returnButtonRow = document.createElement("div");
-    let returnButton = document.createElement("input");
-    let row = document.createElement("div");
-    let dataColumn = document.createElement("div");
-    let wikiColumn = document.createElement("div");
-    let nameField = createTextLabel("Nombre: ", element.name);
-    let birthField = document.createElement("div");
-    let references = getListOfReferences(element);
-    let wikiFrame = document.createElement("iframe");
-
-    container.className = "col-auto";
-    returnButton.type = "button";
-    returnButton.className = "btn btn-primary m-1 col-2";
-    returnButton.value = "Volver";
-    returnButton.onclick = goBack;
-    returnButtonRow.className = "row p-3 m-0";
-    row.className = "row p-3 m-0";
-    dataColumn.className = "col-sm-4 align-self-start";
-    dataColumn.id = "dataColumn";
-    wikiColumn.className = "col-sm-8";
-    wikiFrame.src = element.wiki;
-    wikiFrame.height = (window.innerHeight - header.clientHeight) * 0.9;
-    wikiFrame.width = Math.trunc(window.innerWidth / 12) * 7.5;
-
-    dataColumn.append(nameField, birthField, references);
-    wikiColumn.appendChild(wikiFrame);
-    row.append(dataColumn, wikiColumn);
-    returnButtonRow.appendChild(returnButton);
-    container.append(returnButtonRow, row);
-
-    return container;
-}
-
-function goBack() {
-    let index = JSON.parse(localStorage.getItem("index"));
-    let main = document.getElementsByTagName("main")[0];
-
-    main.innerHTML = "";
-    if (browsingHistory.length <= 1) {
-        browsingHistory = [];
-        actualPage = [];
-        main.appendChild(buildIndexGrid());
-    }
-    else {
-        let pageData = browsingHistory.pop()
-        let element = index[pageData[0]][pageData[1]];
-        actualPage = [pageData[0], pageData[1]];
-        main.appendChild(buildElementPage(element));
-    }
-}
-
-function createTextLabel(labelText, textInfo) {
-    let container = document.createElement("div");
-    let label = document.createElement("label");
-    let textLabel = document.createTextNode(labelText);
-    let paragraph = document.createElement("p");
-    let textParagraph = document.createTextNode(textInfo);
-
-    container.className = "row";
-    label.className = "col-auto";
-    paragraph.className = "col-auto";
-
-    paragraph.appendChild(textParagraph);
-    label.appendChild(textLabel);
-    container.append(label, paragraph);
-
-    return container;
-}
-
-function getListOfReferences(element) {
-    let container = document.createElement("div");
-    if (!(element.type === "Person")) {
-        let personsList = buildListOfPersons(element.persons);
-        container.appendChild(personsList);
-    }
-    if (element.type === "Product") {
-        let entitiesList = buildListOfEntities(element.entities);
-        container.appendChild(entitiesList);
-    }
-
-    container.className = "col-auto";
-
-    return container;
-}
-
-function buildListOfEntities(list) {
-    let index = JSON.parse(localStorage.getItem("index"));
-    let container = buildListOfElements(list, "Entidades involucradas: ");
-    let entitiesListButtons = Array.from(container.children[1].children);
-    entitiesListButtons.map(function (button) {
-        let elementPosition = button.id.substr(11);
-
-        button.value = index[1][elementPosition].name;
-        button.setAttribute("onclick", "goToEntityPage(" + elementPosition + ")");
-    });
-
-
-    return container;
-}
-
-function buildListOfPersons(list) {
-    let index = JSON.parse(localStorage.getItem("index"));
-    let container = buildListOfElements(list, "Personas involucradas: ");
-    let personsListButtons = Array.from(container.children[1].children);
-
-    personsListButtons.map(function (button) {
-        let personPosition = button.id.substr(11);
-        let person = index[2][personPosition];
-        button.value = person.name;
-        button.setAttribute("onclick", "goToPersonPage(" + personPosition + ")");
-    });
-
-    return container;
-}
-
-function buildListOfElements(list, text) {
-    let container = document.createElement("div");
-    let elementsLabel = document.createElement("label");
-    let elementsLabelText = document.createTextNode(text);
-    let elementsList = document.createElement("div");
-
-    for (let i = 0; i < list.length; i++) {
-        let element = list[i];
-        let inputButton = document.createElement("input");
-        inputButton.type = "button";
-        inputButton.className = "btn btn-outline-dark m-1";
-        inputButton.id = "goToButton-" + element;
-        elementsList.appendChild(inputButton);
-    }
-
-    container.className = "row";
-    elementsLabel.appendChild(elementsLabelText);
-    container.append(elementsLabel, elementsList);
-
-    return container;
-}
 function checkLogin() {
     let user = document.getElementById("userInput").value;
     let password = document.getElementById("passwordInput").value;
@@ -373,6 +185,7 @@ function checkLogin() {
 function login() {
     changeLoginFormToWriterButtons();
     addEditButtons();
+    loged = true;
 }
 
 function changeLoginFormToWriterButtons() {
@@ -393,7 +206,7 @@ function addEditButtonsToProductCards() {
     let productCards = Array.from(document.getElementById("productsColumn").children);
 
     productCards.map(function (card) {
-        let buttons = createEditButtons();
+        let buttons = buildEditButtons();
         let editButton = buttons.children[0];
         let removeButton = buttons.children[1];
         editButton.setAttribute("onclick", "showEditProductForm(" + card.id + ")");
@@ -406,7 +219,7 @@ function addEditButtonsToEntityCards() {
     let entityCards = Array.from(document.getElementById("entitiesColumn").children);
 
     entityCards.map(function (card) {
-        let buttons = createEditButtons();
+        let buttons = buildEditButtons();
         let editButton = buttons.children[0];
         let removeButton = buttons.children[1];
         editButton.setAttribute("onclick", "showEditEntityForm(" + card.id + ")");
@@ -419,7 +232,7 @@ function addEditButtonsToPersonCards() {
     let personCards = Array.from(document.getElementById("personsColumn").children);
 
     personCards.map(function (card) {
-        let buttons = createEditButtons();
+        let buttons = buildEditButtons();
         let editButton = buttons.children[0];
         let removeButton = buttons.children[1];
         editButton.setAttribute("onclick", "showEditPersonForm(" + card.id + ")");
@@ -428,12 +241,12 @@ function addEditButtonsToPersonCards() {
     });
 }
 
-function createEditButtons() {
-    let buttonRow = document.createElement("div");
+function buildEditButtons() {
+    let buttonsRow = document.createElement("div");
     let editButton = document.createElement("input");
     let removeButton = document.createElement("input");
 
-    buttonRow.className = "card-footer align-self-center editButton col-12 row m-0 justify-content-around";
+    buttonsRow.className = "card-footer align-self-center editButton col-12 row m-0 justify-content-around";
     editButton.className = "btn btn-primary col-5 m-1";
     editButton.setAttribute("data-bs-toggle", "modal");
     editButton.setAttribute("data-bs-target", "#myModal");
@@ -443,9 +256,9 @@ function createEditButtons() {
     removeButton.type = "button";
     removeButton.value = "Eliminar";
 
-    buttonRow.append(editButton, removeButton);
+    buttonsRow.append(editButton, removeButton);
 
-    return buttonRow;
+    return buttonsRow;
 }
 
 function showAddProductForm() {
@@ -668,171 +481,10 @@ function createTextField(textLabel, inputTextId) {
     return textField;
 }
 
-function addProductToIndex() {
-    let index = JSON.parse(localStorage.getItem("index"));
-    let item = createNewProduct();
-
-    index[0].push(item);
-
-    updateIndex(index);
-}
-
-function addEntityToIndex() {
-    let index = JSON.parse(localStorage.getItem("index"));
-    let item = createNewEntity();
-
-    index[1].push(item);
-
-    updateIndex(index);
-}
-
-function addPersonToIndex() {
-    let index = JSON.parse(localStorage.getItem("index"));
-    let item = createNewPerson();
-
-    index[2].push(item);
-
-    updateIndex(index);
-}
-
-function updateIndex(index) {
-    let main = document.getElementsByTagName("main")[0];
-    let indexList = document.getElementById("indexList");
-
-    localStorage.setItem("index", JSON.stringify(index));
-    main.replaceChild(buildIndexGrid(), indexList);
-
-    addEditButtons();
-    personsAuxList = [];
-    entitiesAuxList = [];
-}
-
-function editProductOfIndex(elementPosition) {
-    let index = JSON.parse(localStorage.getItem("index"));
-    let item = createNewProduct();
-
-    index[0][elementPosition] = item;
-
-    updateIndex(index);
-}
-
-function editEntityOfIndex(elementPosition) {
-    let index = JSON.parse(localStorage.getItem("index"));
-    let item = createNewEntity();
-
-    index[1][elementPosition] = item;
-
-    updateIndex(index);
-}
-function editPersonOfIndex(elementPosition) {
-    let index = JSON.parse(localStorage.getItem("index"));
-    let item = createNewPerson();
-
-    index[2][elementPosition] = item;
-
-    updateIndex(index);
-}
-
-
-function createNewProduct() {
-    let data = getDataOfElement();
-    let name = data[0];
-    let birth = data[1];
-    let img = data[2];
-    let wiki = data[3];
-    let item = new Product(name, birth, img, wiki);
-
-    item.entities = entitiesAuxList;
-    item.persons = personsAuxList;
-
-    return item;
-}
-
-function createNewEntity() {
-    let data = getDataOfElement();
-    let name = data[0];
-    let birth = data[1];
-    let img = data[2];
-    let wiki = data[3];
-
-    let item = new Entity(name, birth, img, wiki);
-    item.persons = personsAuxList;
-
-    return item;
-}
-
-function createNewPerson() {
-    let data = getDataOfElement();
-    let name = data[0];
-    let birth = data[1];
-    let img = data[2];
-    let wiki = data[3];
-
-    let item = new Person(name, birth, img, wiki);
-
-    return item;
-}
-
-function getDataOfElement() {
-    let name = document.getElementById("inputName").value;
-    let birth = document.getElementById("inputBirth").value;
-    let logoUrl = document.getElementById("logoUrl").value;
-    let wikiUrl = document.getElementById("wikiUrl").value;
-
-    return [name, birth, logoUrl, wikiUrl];
-}
-
-function removeProductOfIndex(elementPosition) {
-    let index = JSON.parse(localStorage.getItem("index"));
-
-    index[0].splice(elementPosition, 1);
-
-    updateIndex(index);
-}
-
-function removeEntityOfIndex(elementPosition) {
-    let index = JSON.parse(localStorage.getItem("index"));
-
-    index[1].splice(elementPosition, 1);
-
-    removeEntityReferences(index, elementPosition);
-    updateIndex(index);
-}
-
-function removeEntityReferences(index, elementPosition) {
-    let products = index[0];
-
-    products.map((product) => removeReferences(product.entities, elementPosition));
-}
-
-function removePersonOfIndex(elementPosition) {
-    let index = JSON.parse(localStorage.getItem("index"));
-
-    index[2].splice(elementPosition, 1);
-
-    removePersonReferences(index, elementPosition);
-    updateIndex(index);
-}
-
-function removePersonReferences(index, elementPosition) {
-    let products = index[0];
-    let entities = index[1];
-
-    products.map((product) => removeReferences(product.persons, elementPosition));
-    entities.map((entity) => removeReferences(entity.persons, elementPosition));
-}
-
-function removeReferences(list, element) {
-    console.log(element);
-    let pos = list.indexOf(element.toString());
-    if (pos !== -1) {
-        list.splice(pos, 1);
-    }
-}
-
 function logout() {
     changeWriterButtonsToLoginForm();
     removeEditButtons();
+    loged = false;
 }
 
 function changeWriterButtonsToLoginForm() {
@@ -849,78 +501,4 @@ function removeEditButtons() {
     while (editButtons.length > 0) {
         editButtons[0].remove();
     }
-}
-
-function buildModalWindow() {
-    let container = document.createElement("div");
-    let modalDialog = document.createElement("div");
-    let modalContent = document.createElement("div");
-    let modalHeader = buildModalHeader();
-    let modalBody = buildModalBody();
-    let modalFooter = buildModalFooter();
-
-    container.className = "modal fade"
-    container.id = "myModal"
-    container.tabindex = "-1"
-    container.setAttribute("aria-labelledby", "modalLabel");
-    container.setAttribute("aria-hidden", "true");
-    modalDialog.id = "modal-dialog";
-    modalContent.id = "modal-content";
-
-    modalContent.append(modalHeader, modalBody, modalFooter);
-    modalDialog.appendChild(modalContent);
-    container.appendChild(modalDialog);
-
-    return container;
-}
-
-function buildModalHeader() {
-    let modalHeader = document.createElement("div");
-    let modalHeaderTitle = document.createElement("h5");
-    let modalCloseButton = document.createElement("button");
-
-    modalHeader.id = "modalHeader";
-    modalHeader.className = "modal-header";
-    modalHeaderTitle.id = "modalHeaderTitle";
-    modalHeaderTitle.className = "modal-title";
-    modalCloseButton.type = "button";
-    modalCloseButton.className = "btn-close";
-    modalCloseButton.setAttribute("data-bs-dismiss", "modal");
-    modalCloseButton.setAttribute("aria-label", "Close");
-
-    modalHeader.append(modalHeaderTitle, modalCloseButton);
-
-    return modalHeader;
-}
-
-function buildModalBody() {
-    let modalBody = document.createElement("div");
-    let modalForm = document.createElement("form");
-
-    modalBody.className = "modal-body";
-    modalForm.id = "modalForm";
-
-    modalBody.appendChild(modalForm);
-
-    return modalBody;
-}
-
-function buildModalFooter() {
-    let modalFooter = document.createElement("div");
-    let modalCloseButton = document.createElement("button");
-    let modalConfirmButton = document.createElement("input");
-
-    modalFooter.className = "modal-footer";
-    modalCloseButton.type = "button";
-    modalCloseButton.className = "btn btn-secondary";
-    modalCloseButton.setAttribute("data-bs-dismiss", "modal");
-    modalConfirmButton.id = "modalConfirmButton";
-    modalConfirmButton.type = "button";
-    modalConfirmButton.setAttribute("data-bs-dismiss", "modal");
-    modalConfirmButton.className = "btn btn-primary";
-    modalConfirmButton.value = "Añadir";
-
-    modalFooter.append(modalCloseButton, modalConfirmButton);
-
-    return modalFooter;
 }
